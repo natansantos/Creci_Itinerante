@@ -1,0 +1,19 @@
+# CRECI Itinerante - Dependências
+# Sistema de Business Intelligence Geográfico
+
+# Framework principal
+streamlit>=1.30.0
+
+# Manipulação de dados
+pandas>=2.0.0
+openpyxl>=3.1.0  # Para leitura de arquivos Excel
+
+# Fuzzy matching para normalização de nomes de cidades
+rapidfuzz>=3.5.0
+
+# Visualização de mapas
+folium>=0.15.0
+streamlit-folium>=0.15.0
+
+# Utilitários adicionais
+pathlib2>=2.3.7
