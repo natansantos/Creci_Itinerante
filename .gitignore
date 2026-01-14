@@ -39,6 +39,12 @@ google_credentials.json
 *-credentials.json
 *.json.secret
 
+# Banco de dados local
+data/
+*.db
+*.sqlite
+*.sqlite3
+
 # Arquivos Excel com dados sensíveis
 dados/*.xlsx
 dados/*.xls

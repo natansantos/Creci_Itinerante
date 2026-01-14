@@ -30,7 +30,14 @@ class GoogleSheetsLoader:
     def __init__(self):
         """Inicializa o loader com credenciais do .env ou st.secrets"""
         # Tentar st.secrets primeiro (Streamlit Cloud)
-        if hasattr(st, 'secrets') and 'GOOGLE_SHEET_CORRETORES' in st.secrets:
+        use_secrets = False
+        try:
+            if hasattr(st, 'secrets') and st.secrets and 'GOOGLE_SHEET_CORRETORES' in st.secrets:
+                use_secrets = True
+        except:
+            pass
+        
+        if use_secrets:
             self.credentials_file = st.secrets.get('GOOGLE_CREDENTIALS_FILE', 'google_credentials.json')
             self.sheet_corretores = st.secrets.get('GOOGLE_SHEET_CORRETORES', '')
             self.sheet_imobiliarias = st.secrets.get('GOOGLE_SHEET_IMOBILIARIAS', '')
@@ -59,7 +66,14 @@ class GoogleSheetsLoader:
         """
         try:
             # Prioridade 1: Streamlit Secrets (Cloud)
-            if hasattr(st, 'secrets') and "gcp_service_account" in st.secrets:
+            has_gcp_secrets = False
+            try:
+                if hasattr(st, 'secrets') and st.secrets and "gcp_service_account" in st.secrets:
+                    has_gcp_secrets = True
+            except:
+                pass
+            
+            if has_gcp_secrets:
                 return dict(st.secrets["gcp_service_account"])
             
             # Prioridade 2: Arquivo local

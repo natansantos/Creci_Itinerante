@@ -429,9 +429,24 @@ def main():
     
     st.markdown("---")
     
-    # Sidebar - Filtros
-    st.sidebar.title("⚙️ Configurações")
+    # Sidebar - Menu
+    st.sidebar.title("⚙️ Menu")
     st.sidebar.markdown("---")
+    
+    # Menu de navegação
+    menu_options = ["🗺️ Mapa e Dados", "👥 Gerenciar Usuários"] if user['role'] == 'admin' else ["🗺️ Mapa e Dados"]
+    page = st.sidebar.radio("Navegar", menu_options, label_visibility="collapsed")
+    
+    st.sidebar.markdown("---")
+    
+    # Se selecionou gerenciar usuários
+    if page == "👥 Gerenciar Usuários":
+        from admin_users import render_user_management
+        render_user_management()
+        return
+    
+    # Continuar com página principal (mapa e dados)
+    st.sidebar.subheader("🔍 Filtros de Visualização")
     
     # Carregar dados
     with st.spinner("📊 Carregando dados..."):
@@ -455,9 +470,6 @@ def main():
     if df_consolidado.empty:
         st.error("❌ Não foi possível consolidar os dados.")
         return
-    
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔍 Filtros de Visualização")
     
     # Filtro de quantidade mínima de corretores
     min_corretores = st.sidebar.number_input(

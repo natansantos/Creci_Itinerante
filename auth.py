@@ -1,6 +1,7 @@
 """
 Módulo de Autenticação para Sistema CRECI Itinerante
 Gerencia login e controle de acesso ao sistema
+Suporta autenticação com banco de dados
 
 Autor: Engenheiro de Dados Sênior
 Data: Janeiro 2026
@@ -11,6 +12,7 @@ import bcrypt
 from typing import Optional, Dict
 import os
 from dotenv import load_dotenv
+from user_database import get_user_database
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -19,13 +21,28 @@ load_dotenv()
 class Authenticator:
     """
     Classe para gerenciar autenticação de usuários no sistema.
-    Suporta credenciais locais (.env) e Streamlit Cloud (st.secrets).
+    Suporta autenticação com banco de dados.
     """
     
-    def __init__(self):
-        """Inicializa o autenticador com credenciais do .env ou st.secrets"""
-        # Tentar st.secrets primeiro (Streamlit Cloud)
-        if hasattr(st, 'secrets') and 'ADMIN_USERNAME' in st.secrets:
+    def __init__(self, use_database: bool = True):
+        """
+        Inicializa o autenticador.
+        
+        Args:
+            use_database: Se True, usa banco de dados. Se False, usa .env/secrets (legado)
+        """
+        self.use_database = use_database
+        self.db = get_user_database() if use_database else None
+        
+        # Credenciais legado (fallback)
+        use_secrets = False
+        try:
+            if hasattr(st, 'secrets') and st.secrets and 'ADMIN_USERNAME' in st.secrets:
+                use_secrets = True
+        except:
+            pass
+        
+        if use_secrets:
             self.admin_username = st.secrets.get('ADMIN_USERNAME', 'admin')
             self.admin_password_hash = st.secrets.get('ADMIN_PASSWORD_HASH', '')
             self.admin_name = st.secrets.get('ADMIN_NAME', 'Administrador')
@@ -72,14 +89,26 @@ class Authenticator:
         Returns:
             Dicionário com dados do usuário se autenticado, None caso contrário.
         """
-        # Verificar credenciais
-        if username == self.admin_username:
-            if self.verify_password(password, self.admin_password_hash):
-                return {
-                    'username': self.admin_username,
-                    'name': self.admin_name,
-                    'role': 'admin'
-                }
+        if self.use_database and self.db:
+            # Buscar usuário no banco de dados
+            user = self.db.get_user(username)
+            
+            if user and user['active']:
+                if self.verify_password(password, user['password_hash']):
+                    return {
+                        'username': user['username'],
+                        'name': user['full_name'],
+                        'role': user['role']
+                    }
+        else:
+            # Fallback: credenciais do .env (modo legado)
+            if username == self.admin_username:
+                if self.verify_password(password, self.admin_password_hash):
+                    return {
+                        'username': self.admin_username,
+                        'name': self.admin_name,
+                        'role': 'admin'
+                    }
         
         return None
     
