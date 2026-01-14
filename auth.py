@@ -19,13 +19,21 @@ load_dotenv()
 class Authenticator:
     """
     Classe para gerenciar autenticação de usuários no sistema.
+    Suporta credenciais locais (.env) e Streamlit Cloud (st.secrets).
     """
     
     def __init__(self):
-        """Inicializa o autenticador com credenciais do .env"""
-        self.admin_username = os.getenv('ADMIN_USERNAME', 'admin')
-        self.admin_password_hash = os.getenv('ADMIN_PASSWORD_HASH', '')
-        self.admin_name = os.getenv('ADMIN_NAME', 'Administrador')
+        """Inicializa o autenticador com credenciais do .env ou st.secrets"""
+        # Tentar st.secrets primeiro (Streamlit Cloud)
+        if hasattr(st, 'secrets') and 'ADMIN_USERNAME' in st.secrets:
+            self.admin_username = st.secrets.get('ADMIN_USERNAME', 'admin')
+            self.admin_password_hash = st.secrets.get('ADMIN_PASSWORD_HASH', '')
+            self.admin_name = st.secrets.get('ADMIN_NAME', 'Administrador')
+        else:
+            # Fallback: variáveis de ambiente locais
+            self.admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+            self.admin_password_hash = os.getenv('ADMIN_PASSWORD_HASH', '')
+            self.admin_name = os.getenv('ADMIN_NAME', 'Administrador')
         
         # Validar se as credenciais foram configuradas
         if not self.admin_password_hash or self.admin_password_hash == '$2b$12$exemplo_hash_da_senha_aqui':

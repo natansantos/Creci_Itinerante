@@ -9,12 +9,13 @@ Data: Janeiro 2026
 import streamlit as st
 import pandas as pd
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
 from pathlib import Path
 import os
 from dotenv import load_dotenv
-from typing import Optional
+from typing import Optional, Dict
 import time
+import json
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -23,35 +24,72 @@ load_dotenv()
 class GoogleSheetsLoader:
     """
     Classe para carregar dados do Google Sheets de forma segura.
+    Suporta credenciais locais (arquivo JSON) e Streamlit Cloud (st.secrets).
     """
     
     def __init__(self):
-        """Inicializa o loader com credenciais do .env"""
-        self.credentials_file = os.getenv('GOOGLE_CREDENTIALS_FILE', 'google_credentials.json')
-        self.sheet_corretores = os.getenv('GOOGLE_SHEET_CORRETORES', '')
-        self.sheet_imobiliarias = os.getenv('GOOGLE_SHEET_IMOBILIARIAS', '')
-        self.sheet_name_corretores = os.getenv('SHEET_NAME_CORRETORES', 'Corretores')
-        self.sheet_name_imobiliarias = os.getenv('SHEET_NAME_IMOBILIARIAS', 'Imobiliárias')
-        self.timeout = int(os.getenv('SHEETS_TIMEOUT', '30'))
+        """Inicializa o loader com credenciais do .env ou st.secrets"""
+        # Tentar st.secrets primeiro (Streamlit Cloud)
+        if hasattr(st, 'secrets') and 'GOOGLE_SHEET_CORRETORES' in st.secrets:
+            self.credentials_file = st.secrets.get('GOOGLE_CREDENTIALS_FILE', 'google_credentials.json')
+            self.sheet_corretores = st.secrets.get('GOOGLE_SHEET_CORRETORES', '')
+            self.sheet_imobiliarias = st.secrets.get('GOOGLE_SHEET_IMOBILIARIAS', '')
+            self.sheet_name_corretores = st.secrets.get('SHEET_NAME_CORRETORES', 'Corretores')
+            self.sheet_name_imobiliarias = st.secrets.get('SHEET_NAME_IMOBILIARIAS', 'Imobiliárias')
+            self.timeout = int(st.secrets.get('SHEETS_TIMEOUT', '30'))
+        else:
+            # Fallback: variáveis de ambiente locais
+            self.credentials_file = os.getenv('GOOGLE_CREDENTIALS_FILE', 'google_credentials.json')
+            self.sheet_corretores = os.getenv('GOOGLE_SHEET_CORRETORES', '')
+            self.sheet_imobiliarias = os.getenv('GOOGLE_SHEET_IMOBILIARIAS', '')
+            self.sheet_name_corretores = os.getenv('SHEET_NAME_CORRETORES', 'Corretores')
+            self.sheet_name_imobiliarias = os.getenv('SHEET_NAME_IMOBILIARIAS', 'Imobiliárias')
+            self.timeout = int(os.getenv('SHEETS_TIMEOUT', '30'))
         
         self.client = None
         self._authenticated = False
     
     
+    def _get_credentials_dict(self) -> Optional[Dict]:
+        """
+        Obtém credenciais do Google - funciona local e no Streamlit Cloud.
+        
+        Returns:
+            Dicionário com credenciais ou None se não encontrar.
+        """
+        try:
+            # Prioridade 1: Streamlit Secrets (Cloud)
+            if hasattr(st, 'secrets') and "gcp_service_account" in st.secrets:
+                return dict(st.secrets["gcp_service_account"])
+            
+            # Prioridade 2: Arquivo local
+            credentials_path = Path(self.credentials_file)
+            if credentials_path.exists():
+                with open(credentials_path, 'r') as f:
+                    return json.load(f)
+            
+            return None
+            
+        except Exception as e:
+            st.error(f"❌ Erro ao carregar credenciais: {str(e)}")
+            return None
+    
+    
     def authenticate(self) -> bool:
         """
         Autentica com o Google Sheets API usando Service Account.
+        Suporta tanto arquivo local quanto Streamlit Secrets.
         
         Returns:
             True se autenticado com sucesso, False caso contrário.
         """
         try:
-            # Verificar se o arquivo de credenciais existe
-            credentials_path = Path(self.credentials_file)
+            # Obter credenciais
+            credentials_dict = self._get_credentials_dict()
             
-            if not credentials_path.exists():
-                st.error(f"❌ Arquivo de credenciais não encontrado: {self.credentials_file}")
-                st.info("📖 Consulte o GUIA_CONFIGURACAO.md para obter as credenciais.")
+            if not credentials_dict:
+                st.error("❌ Credenciais não encontradas!")
+                st.info("💡 Local: adicione google_credentials.json | Cloud: configure Streamlit Secrets")
                 return False
             
             # Definir o escopo de acesso
@@ -61,9 +99,9 @@ class GoogleSheetsLoader:
             ]
             
             # Autenticar com as credenciais
-            credentials = ServiceAccountCredentials.from_json_keyfile_name(
-                str(credentials_path),
-                scope
+            credentials = service_account.Credentials.from_service_account_info(
+                credentials_dict,
+                scopes=scope
             )
             
             self.client = gspread.authorize(credentials)
