@@ -26,7 +26,26 @@ wheels/
 # Streamlit
 .streamlit/
 
-# Excel temporários
+# =====================================================================
+# ARQUIVOS SENSÍVEIS E DADOS PRIVADOS
+# =====================================================================
+# Variáveis de ambiente e credenciais
+.env
+.env.local
+.env.production
+
+# Credenciais do Google Sheets
+google_credentials.json
+*-credentials.json
+*.json.secret
+
+# Arquivos Excel com dados sensíveis
+dados/*.xlsx
+dados/*.xls
+*.xlsx
+*.xls
+
+# Excluir os temporários do Excel
 ~$*.xlsx
 ~$*.xls
 

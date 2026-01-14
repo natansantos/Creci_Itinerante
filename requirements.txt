@@ -6,7 +6,7 @@ streamlit>=1.30.0
 
 # Manipulação de dados
 pandas>=2.0.0
-openpyxl>=3.1.0  # Para leitura de arquivos Excel
+openpyxl>=3.1.0  # Para leitura de arquivos Excel (backup local)
 
 # Fuzzy matching para normalização de nomes de cidades
 rapidfuzz>=3.5.0
@@ -14,6 +14,17 @@ rapidfuzz>=3.5.0
 # Visualização de mapas
 folium>=0.15.0
 streamlit-folium>=0.15.0
+
+# Autenticação e segurança
+streamlit-authenticator>=0.2.3
+bcrypt>=4.0.0
+
+# Google Sheets API
+gspread>=5.12.0
+oauth2client>=4.1.3
+
+# Gerenciamento de variáveis de ambiente
+python-dotenv>=1.0.0
 
 # Utilitários adicionais
 pathlib2>=2.3.7

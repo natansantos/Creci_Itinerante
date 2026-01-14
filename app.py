@@ -4,6 +4,8 @@ Planejamento de Rotas de Visita ao Interior da Bahia
 
 Autor: Engenheiro de Dados Sênior
 Data: Janeiro 2026
+
+NOVO: Sistema com autenticação e integração com Google Sheets
 """
 
 import streamlit as st
@@ -14,6 +16,10 @@ from streamlit_folium import st_folium
 from rapidfuzz import fuzz, process
 import os
 from pathlib import Path
+
+# Importar módulos de autenticação e Google Sheets
+from auth import Authenticator
+from google_sheets import get_sheets_loader
 
 # =====================================================================
 # CONFIGURAÇÃO DA PÁGINA
@@ -73,7 +79,8 @@ def carregar_municipios_bahia():
 @st.cache_data
 def carregar_excel(arquivo, nome_tipo):
     """
-    Carrega e processa arquivo Excel de Corretores ou Imobiliárias.
+    [MODO LEGADO] Carrega e processa arquivo Excel de Corretores ou Imobiliárias.
+    Mantido como fallback caso Google Sheets não esteja disponível.
     
     Args:
         arquivo: Nome do arquivo Excel.
@@ -84,6 +91,9 @@ def carregar_excel(arquivo, nome_tipo):
     """
     try:
         caminho = Path(f"dados/{arquivo}")
+        
+        if not caminho.exists():
+            return pd.DataFrame()
         
         df = pd.read_excel(caminho)
         
@@ -118,16 +128,41 @@ def carregar_excel(arquivo, nome_tipo):
             'IRREGULAR': 'sum'
         })
         
-        st.sidebar.success(f"✅ {len(df_consolidado)} cidades de {nome_tipo} carregadas")
-        
         return df_consolidado
         
     except FileNotFoundError:
-        st.error(f"❌ Arquivo {arquivo} não encontrado!")
         return pd.DataFrame()
     except Exception as e:
         st.error(f"❌ Erro ao carregar {arquivo}: {str(e)}")
         return pd.DataFrame()
+
+
+def carregar_dados_fonte():
+    """
+    Carrega dados de corretores e imobiliárias da fonte configurada.
+    Prioriza Google Sheets, mas usa Excel local como fallback.
+    
+    Returns:
+        Tupla (df_corretores, df_imobiliarias)
+    """
+    sheets_loader = get_sheets_loader()
+    
+    # Tentar carregar do Google Sheets primeiro
+    st.sidebar.info("📡 Conectando ao Google Sheets...")
+    
+    df_corretores = sheets_loader.carregar_corretores()
+    df_imobiliarias = sheets_loader.carregar_imobiliarias()
+    
+    # Se falhar, tentar carregar dos arquivos Excel locais (fallback)
+    if df_corretores.empty:
+        st.sidebar.warning("⚠️ Tentando carregar corretores do arquivo local...")
+        df_corretores = carregar_excel("Corretores.xlsx", "Corretores")
+    
+    if df_imobiliarias.empty:
+        st.sidebar.warning("⚠️ Tentando carregar imobiliárias do arquivo local...")
+        df_imobiliarias = carregar_excel("Imobiliárias.xlsx", "Imobiliárias")
+    
+    return df_corretores, df_imobiliarias
 
 
 def realizar_fuzzy_matching(nome_cidade, lista_municipios, threshold=FUZZY_THRESHOLD):
@@ -365,9 +400,35 @@ def criar_mapa(df_filtrado):
 def main():
     """Função principal da aplicação Streamlit."""
     
-    # Cabeçalho
-    st.title("🗺️ CRECI Itinerante - Bahia")
-    st.markdown("**Sistema de Business Intelligence Geográfico para Planejamento de Rotas**")
+    # ============================================
+    # AUTENTICAÇÃO
+    # ============================================
+    authenticator = Authenticator()
+    
+    # Verificar se o usuário está autenticado
+    if not authenticator.is_authenticated():
+        # Mostrar formulário de login
+        authenticator.login_form()
+        return  # Não continuar até fazer login
+    
+    # ============================================
+    # USUÁRIO AUTENTICADO - MOSTRAR APLICAÇÃO
+    # ============================================
+    
+    # Cabeçalho com informações do usuário
+    user = authenticator.get_current_user()
+    col_title, col_user = st.columns([4, 1])
+    
+    with col_title:
+        st.title("🗺️ CRECI Itinerante - Bahia")
+        st.markdown("**Sistema de Business Intelligence Geográfico para Planejamento de Rotas**")
+    
+    with col_user:
+        st.write("")  # Espaçamento
+        st.write(f"👤 **{user['name']}**")
+        if st.button("🚪 Sair", use_container_width=True):
+            authenticator.logout()
+    
     st.markdown("---")
     
     # Sidebar - Filtros
@@ -377,12 +438,16 @@ def main():
     # Carregar dados
     with st.spinner("📊 Carregando dados..."):
         df_municipios = carregar_municipios_bahia()
-        df_corretores = carregar_excel("Corretores.xlsx", "Corretores")
-        df_imobiliarias = carregar_excel("Imobiliárias.xlsx", "Imobiliárias")
+        df_corretores, df_imobiliarias = carregar_dados_fonte()
     
     # Verificar se os dados foram carregados
     if df_municipios.empty or df_corretores.empty or df_imobiliarias.empty:
-        st.error("❌ Não foi possível carregar todos os dados necessários. Verifique os arquivos.")
+        st.error("❌ Não foi possível carregar todos os dados necessários.")
+        st.info("💡 Verifique as configurações do Google Sheets no arquivo .env")
+        
+        # Mostrar botão para recarregar
+        if st.button("🔄 Tentar Novamente"):
+            st.rerun()
         return
     
     # Consolidar dados
@@ -545,7 +610,8 @@ def main():
     
     # Rodapé
     st.markdown("---")
-    st.caption("💼 Sistema CRECI Itinerante | Desenvolvido com Streamlit + Folium + RapidFuzz")
+    st.caption("💼 Sistema CRECI Itinerante | Desenvolvido com Streamlit + Google Sheets + Folium")
+    st.caption(f"🔐 Usuário: {user['name']} | 🔒 Sessão Segura")
 
 
 # =====================================================================
