@@ -102,7 +102,7 @@ O sistema implementa:
 
 ## 👨‍💻 Autor
 
-Desenvolvido por Engenheiro de Dados Sênior  
+Desenvolvido por Natan Santos  
 Janeiro de 2026
 
 ## 📄 Licença

@@ -151,5 +151,5 @@ O sistema detectará automaticamente as alterações (graças ao cache do Stream
 
 ---
 
-**Desenvolvido com 💙 por Engenheiro de Dados Sênior**  
+**Desenvolvido por Natan Santos**  
 Janeiro 2026
