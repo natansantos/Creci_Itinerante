@@ -148,8 +148,6 @@ def carregar_dados_fonte():
     sheets_loader = get_sheets_loader()
     
     # Tentar carregar do Google Sheets primeiro
-    st.sidebar.info("📡 Conectando ao Google Sheets...")
-    
     df_corretores = sheets_loader.carregar_corretores()
     df_imobiliarias = sheets_loader.carregar_imobiliarias()
     

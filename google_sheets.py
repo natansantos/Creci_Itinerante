@@ -129,7 +129,6 @@ class GoogleSheetsLoader:
                 try:
                     worksheet = spreadsheet.worksheet(worksheet_name)
                 except gspread.WorksheetNotFound:
-                    st.warning(f"⚠️ Aba '{worksheet_name}' não encontrada. Usando primeira aba.")
                     worksheet = spreadsheet.get_worksheet(0)
                 
                 # Carregar todos os dados
